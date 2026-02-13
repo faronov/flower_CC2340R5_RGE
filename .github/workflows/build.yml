@@ -101,11 +101,12 @@ jobs:
 
           echo "SDK installed at: ${SDK_PATH}"
           ls "${SDK_PATH}"/.metadata/product.json 2>/dev/null && echo "product.json found" || echo "product.json not found"
+          find "${SDK_PATH}" -maxdepth 1 -name "*.xml" -o -name "*.json" | head -5
 
-          echo "Discovering SDK in CCS..."
+          echo "Initializing CCS with SDK discovery (parent dir: ${TI_HOME})..."
           "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
-            -application com.ti.ccstudio.apps.projectImport \
-            -ccs.productDiscoveryPath "${SDK_PATH}" 2>&1 || true
+            -application com.ti.common.core.initialize \
+            -ccs.productDiscoveryPath "${TI_HOME}" 2>&1 || true
 
       - name: Verify tool installation
         run: |
@@ -125,14 +126,13 @@ jobs:
         run: |
           ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
           WORKSPACE=$(mktemp -d)
-          SDK_PATH="${TI_HOME}/${SDK_DIR_NAME}"
 
           echo "Using eclipse: ${ECLIPSE}"
           echo "::group::Import MCUBoot project"
           "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
             -application com.ti.ccstudio.apps.projectImport \
             -ccs.location "${{ github.workspace }}/mcuboot_flower_CC2340R5_RGE" \
-            -ccs.productDiscoveryPath "${SDK_PATH}"
+            -ccs.productDiscoveryPath "${TI_HOME}"
           echo "::endgroup::"
 
           echo "::group::Build MCUBoot project"
@@ -146,14 +146,13 @@ jobs:
         run: |
           ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
           WORKSPACE=$(mktemp -d)
-          SDK_PATH="${TI_HOME}/${SDK_DIR_NAME}"
 
           echo "Using eclipse: ${ECLIPSE}"
           echo "::group::Import Flower project"
           "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
             -application com.ti.ccstudio.apps.projectImport \
             -ccs.location "${{ github.workspace }}/flower_ota_onchip_CC2340R5_RGE" \
-            -ccs.productDiscoveryPath "${SDK_PATH}"
+            -ccs.productDiscoveryPath "${TI_HOME}"
           echo "::endgroup::"
 
           echo "::group::Build Flower project"
