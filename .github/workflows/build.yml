@@ -1,0 +1,173 @@
+# GitHub Actions workflow for building the Flower CC2340R5 firmware.
+#
+# Prerequisites:
+#   - CCS 12.8.0 (Code Composer Studio) with TICLANG 3.2.2 LTS
+#   - SimpleLink Low Power F3 SDK 8.40.02.01
+#   - SysConfig 1.22.0 (bundled with CCS)
+#
+# NOTE: Verify the exact CCS build number (CCS_BUILD_VER) and SDK download URLs
+# before the first run. Check https://www.ti.com/tool/download/CCSTUDIO and
+# https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK for the latest.
+#
+# First run will take ~20-30 min to download CCS (~2 GB) and SDK (~1.5 GB).
+# Subsequent runs use cache and complete much faster.
+
+name: Build Firmware
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CCS_MAJOR: "12"
+  CCS_MINOR: "8"
+  CCS_PATCH: "0"
+  CCS_BUILD_VER: "00009"
+  SDK_VERSION: "8.40.02.01"
+  SDK_DIR_NAME: "simplelink_lowpower_f3_sdk_8_40_02_01"
+  TI_HOME: "${{ github.workspace }}/../ti"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install system dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            libc6:i386 libusb-0.1-4 libgconf-2-4 libncurses5 libpython2.7
+
+      - name: Cache TI tools (CCS + SDK)
+        id: cache-ti
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TI_HOME }}
+          key: ti-ccs${{ env.CCS_MAJOR }}${{ env.CCS_MINOR }}${{ env.CCS_PATCH }}-sdk${{ env.SDK_DIR_NAME }}
+
+      - name: Download and install CCS ${{ env.CCS_MAJOR }}.${{ env.CCS_MINOR }}.${{ env.CCS_PATCH }}
+        if: steps.cache-ti.outputs.cache-hit != 'true'
+        run: |
+          CCS_FULL_VER="${CCS_MAJOR}.${CCS_MINOR}.${CCS_PATCH}.${CCS_BUILD_VER}"
+          CCS_TARBALL="CCS${CCS_FULL_VER}_linux-x64.tar.gz"
+          CCS_URL="https://software-dl.ti.com/ccs/esd/CCSv${CCS_MAJOR}/${CCS_TARBALL}"
+
+          echo "::group::Download CCS ${CCS_FULL_VER}"
+          wget -nv "${CCS_URL}" -O "${CCS_TARBALL}"
+          echo "::endgroup::"
+
+          echo "::group::Extract CCS"
+          tar -xf "${CCS_TARBALL}"
+          rm -f "${CCS_TARBALL}"
+          echo "::endgroup::"
+
+          echo "::group::Install CCS (headless)"
+          CCS_INSTALLER=$(find . -maxdepth 2 -name "ccs_setup_*.run" | head -1)
+          chmod +x "${CCS_INSTALLER}"
+          "${CCS_INSTALLER}" --mode unattended \
+            --prefix "${TI_HOME}/ccs" \
+            --enable-components PF_CC2X
+          rm -rf CCS${CCS_FULL_VER}_linux-x64/
+          echo "::endgroup::"
+
+      - name: Download and install SimpleLink F3 SDK ${{ env.SDK_VERSION }}
+        if: steps.cache-ti.outputs.cache-hit != 'true'
+        run: |
+          SDK_INSTALLER="${SDK_DIR_NAME}.run"
+          SDK_URL="https://software-dl.ti.com/simplelink/esd/simplelink_lowpower_f3_sdk/${SDK_VERSION}/${SDK_INSTALLER}"
+
+          echo "::group::Download SDK ${SDK_VERSION}"
+          wget -nv "${SDK_URL}" -O "${SDK_INSTALLER}"
+          echo "::endgroup::"
+
+          echo "::group::Install SDK (headless)"
+          chmod +x "${SDK_INSTALLER}"
+          "./${SDK_INSTALLER}" --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
+          rm -f "${SDK_INSTALLER}"
+          echo "::endgroup::"
+
+      - name: Verify tool installation
+        run: |
+          echo "CCS eclipse:"
+          ls "${TI_HOME}"/ccs/ccs/eclipse/eclipse || ls "${TI_HOME}"/ccs/eclipse/eclipse || echo "WARNING: eclipse binary not found — check CCS_INSTALL path"
+          echo ""
+          echo "SDK:"
+          ls "${TI_HOME}/${SDK_DIR_NAME}/.metadata/product.json" 2>/dev/null \
+            || ls -d "${TI_HOME}/${SDK_DIR_NAME}" \
+            || echo "WARNING: SDK directory not found"
+          echo ""
+          echo "TICLANG compiler:"
+          find "${TI_HOME}/ccs" -name "tiarmclang" -type f 2>/dev/null | head -1 \
+            || echo "WARNING: tiarmclang not found"
+
+      - name: Build MCUBoot bootloader
+        run: |
+          ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
+          WORKSPACE=$(mktemp -d)
+
+          echo "Using eclipse: ${ECLIPSE}"
+          echo "::group::Import MCUBoot project"
+          "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
+            -application com.ti.ccstudio.apps.projectImport \
+            -ccs.location "${{ github.workspace }}/mcuboot_flower_CC2340R5_RGE"
+          echo "::endgroup::"
+
+          echo "::group::Build MCUBoot project"
+          "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
+            -application com.ti.ccstudio.apps.projectBuild \
+            -ccs.projects "mcuboot_flower_CC2340R5_RGE" \
+            -ccs.configuration Debug
+          echo "::endgroup::"
+
+      - name: Build Flower application
+        run: |
+          ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
+          WORKSPACE=$(mktemp -d)
+
+          echo "Using eclipse: ${ECLIPSE}"
+          echo "::group::Import Flower project"
+          "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
+            -application com.ti.ccstudio.apps.projectImport \
+            -ccs.location "${{ github.workspace }}/flower_ota_onchip_CC2340R5_RGE"
+          echo "::endgroup::"
+
+          echo "::group::Build Flower project"
+          "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
+            -application com.ti.ccstudio.apps.projectBuild \
+            -ccs.projects "flower_ota_onchip_CC2340R5_RGE" \
+            -ccs.configuration Debug
+          echo "::endgroup::"
+
+      - name: Upload MCUBoot bootloader
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcuboot-bootloader
+          path: |
+            mcuboot_flower_CC2340R5_RGE/Debug/*.hex
+            mcuboot_flower_CC2340R5_RGE/Debug/*.out
+          if-no-files-found: warn
+
+      - name: Upload Flower firmware
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flower-firmware
+          path: |
+            flower_ota_onchip_CC2340R5_RGE/Debug/*_ota.bin
+            flower_ota_onchip_CC2340R5_RGE/Debug/*.hex
+            flower_ota_onchip_CC2340R5_RGE/Debug/*.out
+          if-no-files-found: warn
