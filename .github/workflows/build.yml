@@ -27,7 +27,7 @@ env:
   SDK_VERSION: "8.40.02.01"
   SDK_DIR_NAME: "simplelink_lowpower_f3_sdk_8_40_02_01"
   SDK_URL: "https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/8.40.02.01/simplelink_lowpower_f3_sdk_8_40_02_01.run"
-  TI_HOME: "${{ github.workspace }}/../ti"
+  TI_HOME: "/opt/ti"
 
 jobs:
   build:
@@ -74,7 +74,9 @@ jobs:
           chmod +x "${CCS_INSTALLER}"
           "${CCS_INSTALLER}" --mode unattended \
             --prefix "${TI_HOME}/ccs" \
-            --enable-components PF_WCONN
+            --enable-components PF_WCONN \
+            --install-BlackHawk false \
+            --install-Segger false
           rm -rf CCS*/
           echo "::endgroup::"
 
