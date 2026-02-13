@@ -74,7 +74,7 @@ jobs:
           chmod +x "${CCS_INSTALLER}"
           "${CCS_INSTALLER}" --mode unattended \
             --prefix "${TI_HOME}/ccs" \
-            --enable-components PF_CC2X
+            --enable-components PF_WCONN
           rm -rf CCS*/
           echo "::endgroup::"
 
