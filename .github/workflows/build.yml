@@ -1,7 +1,7 @@
 # GitHub Actions workflow for building the Flower CC2340R5 firmware.
 #
 # Prerequisites:
-#   - CCS 12.8.0 (Code Composer Studio) with TICLANG 3.2.2 LTS
+#   - CCS 12.8.1 (Code Composer Studio) with TICLANG 3.2.2 LTS
 #   - SimpleLink Low Power F3 SDK 8.40.02.01
 #   - SysConfig 1.22.0 (bundled with CCS)
 #
@@ -22,11 +22,11 @@ on:
   workflow_dispatch:
 
 env:
-  CCS_VERSION: "12.8.0.00001"
-  CCS_URL: "https://software-dl.ti.com/ccs/esd/CCSv12/CCS_12.8.0/exports/ccs12.8.0.00001_linux-x64.tar.gz"
+  CCS_VERSION: "12.8.1.00005"
+  CCS_URL: "https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/12.8.1/CCS12.8.1.00005_linux-x64.tar.gz"
   SDK_VERSION: "8.40.02.01"
   SDK_DIR_NAME: "simplelink_lowpower_f3_sdk_8_40_02_01"
-  SDK_URL: "https://software-dl.ti.com/simplelink/esd/simplelink_lowpower_f3_sdk/8.40.02.01/exports/simplelink_lowpower_f3_sdk_8_40_02_01_linux-x64_installer.bin"
+  SDK_URL: "https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/8.40.02.01/simplelink_lowpower_f3_sdk_8_40_02_01.run"
   TI_HOME: "${{ github.workspace }}/../ti"
 
 jobs:
@@ -82,13 +82,13 @@ jobs:
         if: steps.cache-ti.outputs.cache-hit != 'true'
         run: |
           echo "::group::Download SDK"
-          wget -nv "${SDK_URL}" -O sdk_installer.bin
+          wget -nv "${SDK_URL}" -O sdk_installer.run
           echo "::endgroup::"
 
           echo "::group::Install SDK (headless)"
-          chmod +x sdk_installer.bin
-          ./sdk_installer.bin --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
-          rm -f sdk_installer.bin
+          chmod +x sdk_installer.run
+          ./sdk_installer.run --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
+          rm -f sdk_installer.run
           echo "::endgroup::"
 
       - name: Verify tool installation
