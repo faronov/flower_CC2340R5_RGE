@@ -89,9 +89,23 @@ jobs:
 
           echo "::group::Install SDK (headless)"
           chmod +x sdk_installer.run
-          ./sdk_installer.run --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
+          ./sdk_installer.run --mode unattended --prefix "${TI_HOME}"
           rm -f sdk_installer.run
           echo "::endgroup::"
+
+      - name: Register SDK with CCS
+        run: |
+          ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
+          WORKSPACE=$(mktemp -d)
+          SDK_PATH="${TI_HOME}/${SDK_DIR_NAME}"
+
+          echo "SDK installed at: ${SDK_PATH}"
+          ls "${SDK_PATH}"/.metadata/product.json 2>/dev/null && echo "product.json found" || echo "product.json not found"
+
+          echo "Discovering SDK in CCS..."
+          "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
+            -application com.ti.ccstudio.apps.projectImport \
+            -ccs.productDiscoveryPath "${SDK_PATH}" 2>&1 || true
 
       - name: Verify tool installation
         run: |
@@ -111,12 +125,14 @@ jobs:
         run: |
           ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
           WORKSPACE=$(mktemp -d)
+          SDK_PATH="${TI_HOME}/${SDK_DIR_NAME}"
 
           echo "Using eclipse: ${ECLIPSE}"
           echo "::group::Import MCUBoot project"
           "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
             -application com.ti.ccstudio.apps.projectImport \
-            -ccs.location "${{ github.workspace }}/mcuboot_flower_CC2340R5_RGE"
+            -ccs.location "${{ github.workspace }}/mcuboot_flower_CC2340R5_RGE" \
+            -ccs.productDiscoveryPath "${SDK_PATH}"
           echo "::endgroup::"
 
           echo "::group::Build MCUBoot project"
@@ -130,12 +146,14 @@ jobs:
         run: |
           ECLIPSE=$(find "${TI_HOME}/ccs" -name "eclipse" -type f -path "*/eclipse/eclipse" | head -1)
           WORKSPACE=$(mktemp -d)
+          SDK_PATH="${TI_HOME}/${SDK_DIR_NAME}"
 
           echo "Using eclipse: ${ECLIPSE}"
           echo "::group::Import Flower project"
           "${ECLIPSE}" -noSplash -data "${WORKSPACE}" \
             -application com.ti.ccstudio.apps.projectImport \
-            -ccs.location "${{ github.workspace }}/flower_ota_onchip_CC2340R5_RGE"
+            -ccs.location "${{ github.workspace }}/flower_ota_onchip_CC2340R5_RGE" \
+            -ccs.productDiscoveryPath "${SDK_PATH}"
           echo "::endgroup::"
 
           echo "::group::Build Flower project"
