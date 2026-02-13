@@ -22,12 +22,11 @@ on:
   workflow_dispatch:
 
 env:
-  CCS_MAJOR: "12"
-  CCS_MINOR: "8"
-  CCS_PATCH: "0"
-  CCS_BUILD_VER: "00009"
+  CCS_VERSION: "12.8.0.00001"
+  CCS_URL: "https://software-dl.ti.com/ccs/esd/CCSv12/CCS_12.8.0/exports/ccs12.8.0.00001_linux-x64.tar.gz"
   SDK_VERSION: "8.40.02.01"
   SDK_DIR_NAME: "simplelink_lowpower_f3_sdk_8_40_02_01"
+  SDK_URL: "https://software-dl.ti.com/simplelink/esd/simplelink_lowpower_f3_sdk/8.40.02.01/exports/simplelink_lowpower_f3_sdk_8_40_02_01_linux-x64_installer.bin"
   TI_HOME: "${{ github.workspace }}/../ti"
 
 jobs:
@@ -56,47 +55,40 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.TI_HOME }}
-          key: ti-ccs${{ env.CCS_MAJOR }}${{ env.CCS_MINOR }}${{ env.CCS_PATCH }}-sdk${{ env.SDK_DIR_NAME }}
+          key: ti-ccs-${{ env.CCS_VERSION }}-sdk-${{ env.SDK_DIR_NAME }}
 
-      - name: Download and install CCS ${{ env.CCS_MAJOR }}.${{ env.CCS_MINOR }}.${{ env.CCS_PATCH }}
+      - name: Download and install CCS
         if: steps.cache-ti.outputs.cache-hit != 'true'
         run: |
-          CCS_FULL_VER="${CCS_MAJOR}.${CCS_MINOR}.${CCS_PATCH}.${CCS_BUILD_VER}"
-          CCS_TARBALL="CCS${CCS_FULL_VER}_linux-x64.tar.gz"
-          CCS_URL="https://software-dl.ti.com/ccs/esd/CCSv${CCS_MAJOR}/${CCS_TARBALL}"
-
-          echo "::group::Download CCS ${CCS_FULL_VER}"
-          wget -nv "${CCS_URL}" -O "${CCS_TARBALL}"
+          echo "::group::Download CCS"
+          wget -nv "${CCS_URL}" -O ccs_installer.tar.gz
           echo "::endgroup::"
 
           echo "::group::Extract CCS"
-          tar -xf "${CCS_TARBALL}"
-          rm -f "${CCS_TARBALL}"
+          tar -xf ccs_installer.tar.gz
+          rm -f ccs_installer.tar.gz
           echo "::endgroup::"
 
           echo "::group::Install CCS (headless)"
-          CCS_INSTALLER=$(find . -maxdepth 2 -name "ccs_setup_*.run" | head -1)
+          CCS_INSTALLER=$(find . -maxdepth 2 -name "ccs_setup_*.run" -o -name "ccs_setup_*.bin" | head -1)
           chmod +x "${CCS_INSTALLER}"
           "${CCS_INSTALLER}" --mode unattended \
             --prefix "${TI_HOME}/ccs" \
             --enable-components PF_CC2X
-          rm -rf CCS${CCS_FULL_VER}_linux-x64/
+          rm -rf CCS*/
           echo "::endgroup::"
 
-      - name: Download and install SimpleLink F3 SDK ${{ env.SDK_VERSION }}
+      - name: Download and install SimpleLink F3 SDK
         if: steps.cache-ti.outputs.cache-hit != 'true'
         run: |
-          SDK_INSTALLER="${SDK_DIR_NAME}.run"
-          SDK_URL="https://software-dl.ti.com/simplelink/esd/simplelink_lowpower_f3_sdk/${SDK_VERSION}/${SDK_INSTALLER}"
-
-          echo "::group::Download SDK ${SDK_VERSION}"
-          wget -nv "${SDK_URL}" -O "${SDK_INSTALLER}"
+          echo "::group::Download SDK"
+          wget -nv "${SDK_URL}" -O sdk_installer.bin
           echo "::endgroup::"
 
           echo "::group::Install SDK (headless)"
-          chmod +x "${SDK_INSTALLER}"
-          "./${SDK_INSTALLER}" --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
-          rm -f "${SDK_INSTALLER}"
+          chmod +x sdk_installer.bin
+          ./sdk_installer.bin --mode unattended --prefix "${TI_HOME}/${SDK_DIR_NAME}"
+          rm -f sdk_installer.bin
           echo "::endgroup::"
 
       - name: Verify tool installation
