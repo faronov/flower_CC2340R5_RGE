@@ -16,7 +16,7 @@
 
 #include <math.h>
 
-I2C_Handle i2cHandle;
+extern I2C_Handle i2cHandle;
 /**
  * Set the address of the sensor.
  * The address is set with hardware, depending on the configuration of the ADDR pin.

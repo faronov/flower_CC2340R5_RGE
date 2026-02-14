@@ -11,8 +11,7 @@
 #include <ti/drivers/I2C.h>
 #include <ti/drivers/i2c/I2CLPF3.h>
 
-I2C_Handle i2cHandle;
-static bool status = false;
+extern I2C_Handle i2cHandle;
 
 uint8_t bh1750_MTreg = (uint8_t)BH1750_DEFAULT_MTREG;
 uint8_t bh1750_mode = CONTINUOUS_HIGH_RES_MODE;
@@ -22,27 +21,7 @@ uint8_t bh1750_mode = CONTINUOUS_HIGH_RES_MODE;
  * @param mode Measurement mode
  */
 bool bh1750_init(uint8_t mode) {
-/*
-  bh1750_Write(BH1750_RESET);
-
-  bh1750_Write(BH1750_POWER_ON);
-
-  bh1750_Write(ONE_TIME_LOW_RES_MODE);
-  bh1750_WaitMs(10);
-  uint16_t initread = 0xFFFF;
-  initread = (uint16_t)bh1750_Read();
-
-  if((uint16_t)initread != 0x0000){
-    bh1750_mode = mode;
-    bh1750_Write(mode);
-    bh1750_setMTreg(bh1750_MTreg);
-
-    bh1750_PowerDown();
-
-    return true;
-  }
-  return false;
-*/
+    bool status;
     I2C_Transaction i2cTransaction = {0};
     uint8_t writeBuffer[1];
     writeBuffer[0] = mode;
@@ -103,7 +82,7 @@ bool bh1750_setMTreg(uint8_t MTreg) {
   // Wait a few moments to wake up
   bh1750_WaitMs(10);
 
-  return 0;
+  return true;
 }
 
 void bh1750_PowerDown(void) {
@@ -113,6 +92,7 @@ void bh1750_PowerDown(void) {
 }
 
 float bh1750_Read(void) {
+    bool status;
     I2C_Transaction i2cTransaction = {0};
     uint8_t readBuffer[2];
 
@@ -145,6 +125,7 @@ float bh1750_Read(void) {
 }
 
 void bh1750_Write(uint8_t mode) {
+    bool status;
     I2C_Transaction i2cTransaction = {0};
     uint8_t writeBuffer[1];
     writeBuffer[0] = mode;

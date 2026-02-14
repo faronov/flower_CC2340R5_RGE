@@ -140,9 +140,9 @@ zb_uint8_t dl_ota_upgrade_init(zb_uint32_t image_size,
 {
   zb_uint8_t ret = ZB_ZCL_OTA_UPGRADE_STATUS_OK;
 
-  if (g_dev_ctx.ota_ctx.flash_dev)
+  if (g_dev_ctx.ota_ctx.ota_in_progress)
   {
-    Log_printf(LogModule_Zigbee_App, Log_INFO, "OTA is already in progress (is it ever possible?)");
+    Log_printf(LogModule_Zigbee_App, Log_INFO, "OTA is already in progress");
     ret = ZB_ZCL_OTA_UPGRADE_STATUS_ERROR;
   }
   else if (!zb_osif_ota_fw_size_ok(image_size))
@@ -163,6 +163,7 @@ zb_uint8_t dl_ota_upgrade_init(zb_uint32_t image_size,
 
     g_dev_ctx.ota_ctx.total_image_size = image_size;
     g_dev_ctx.ota_ctx.fw_version = image_version;
+    g_dev_ctx.ota_ctx.ota_in_progress = ZB_TRUE;
     zb_osif_ota_mark_fw_absent();
     /* Simplify our life: sync erase space for entire FW.
        Alternetively can erase by portions in dl_ota_upgrade_write_next_portion().
@@ -211,6 +212,7 @@ void dl_ota_upgrade_mark_fw_ok(void)
   g_dev_ctx.ota_ctx.flash_is_open = false;
   #endif // OTA_OFFCHIP
   g_dev_ctx.ota_ctx.flash_dev = NULL;
+  g_dev_ctx.ota_ctx.ota_in_progress = ZB_FALSE;
 }
 
 void dl_ota_upgrade_abort(void)
@@ -220,4 +222,5 @@ void dl_ota_upgrade_abort(void)
   g_dev_ctx.ota_ctx.flash_is_open = false;
   #endif // OTA_OFFCHIP
   g_dev_ctx.ota_ctx.flash_dev = NULL;
+  g_dev_ctx.ota_ctx.ota_in_progress = ZB_FALSE;
 }

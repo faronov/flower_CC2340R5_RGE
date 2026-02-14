@@ -61,7 +61,7 @@ int32_t t_fine;
   int16_t bme280_dig_H5; ///< humidity compensation value
   int8_t bme280_dig_H6;  ///< humidity compensation value
 
-I2C_Handle i2cHandle;
+extern I2C_Handle i2cHandle;
 static bool status = false;
 
 bool BME280Init(void) {
